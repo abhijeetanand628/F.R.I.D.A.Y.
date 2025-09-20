@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered Smart Voice Assistant</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>F.R.I.D.A.Y.</h1>
+            <p>Your browser-based intelligent assistant</p>
+        </header>
+        
+        <main>
+            <div class="assistant-container">
+                <div class="status-indicator">
+                    <div class="pulse-ring"></div>
+                    <div class="mic-icon" id="micIcon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M8.25 4.5a3.75 3.75 0 117.5 0v8.25a3.75 3.75 0 11-7.5 0V4.5z" />
+                            <path d="M6 10.5a.75.75 0 01.75.75v1.5a5.25 5.25 0 1010.5 0v-1.5a.75.75 0 011.5 0v1.5a6.751 6.751 0 01-6 6.709v2.291h3a.75.75 0 010 1.5h-7.5a.75.75 0 010-1.5h3v-2.291a6.751 6.751 0 01-6-6.709v-1.5A.75.75 0 016 10.5z" />
+                        </svg>
+                    </div>
+                </div>
+                
+                <div class="command-display">
+                    <p id="commandText">Say "Hey Assistant" to begin</p>
+                </div>
+                
+                <div class="controls">
+                    <button id="toggleListening" class="btn-primary">
+                        Start Listening
+                    </button>
+                    <button id="settingsBtn" class="btn-secondary">
+                        Settings
+                    </button>
+                </div>
+            </div>
+            
+            <div class="response-container">
+                <h2>Assistant Response</h2>
+                <div class="response-content" id="responseContent">
+                    <p>I'll respond to your commands here...</p>
+                </div>
+            </div>
+            
+            <div class="tasks-container">
+                <h2>Managed Tasks</h2>
+                <ul id="tasksList">
+                </ul>
+            </div>
+        </main>
+        
+        <footer>
+            <p>Powered by Web Speech API & OpenAI</p>
+        </footer>
+    </div>
+    
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Assistant Settings</h2>
+            <div class="settings-option">
+                <label for="wakeWord">Wake Word:</label>
+                <select id="wakeWord">
+                    <option value="hey assistant">Hey Assistant</option>
+                    <option value="computer">Computer</option>
+                    <option value="jarvis">Jarvis</option>
+                </select>
+            </div>
+            <div class="settings-option">
+                <label for="voice">Assistant Voice:</label>
+                <select id="voice">
+                </select>
+            </div>
+            <div class="settings-option">
+                <label>
+                    <input type="checkbox" id="autoStart">
+                    Auto-start listening on page load
+                </label>
+            </div>
+            <button class="btn-primary" id="saveSettings">Save Settings</button>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
