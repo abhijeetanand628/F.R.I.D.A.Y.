@@ -36,6 +36,22 @@ startBtn.addEventListener('click', function(){
 })
 
 
+
+
+async function askAssistant(prompt) {
+  const res = await fetch("/.netlify/functions/ask", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ prompt })
+  });
+
+  const data = await res.json();
+  return data.answer || "Sorry, something went wrong.";
+}
+
+
+
+
 // Handle result    
 recognition.addEventListener("result", (e) => {
   let transcript = e.results[e.results.length - 1][0].transcript.toLowerCase().trim();
@@ -63,7 +79,8 @@ recognition.addEventListener("result", (e) => {
 });
 
 // Command handler function
-function processCommand(command) {
+// Command handler function
+async function processCommand(command) {
   console.log("Processing command:", command);
   responseContainer.innerHTML = `Command: ${command}`;
 
@@ -71,23 +88,61 @@ function processCommand(command) {
     const now = new Date().toLocaleTimeString();
     responseContainer.innerHTML = `Current time is ${now}`;
     speak(`The time is ${now}`);
+    return;
   }
 
   if (command.includes("date")) {
     const today = new Date().toLocaleDateString();
     responseContainer.innerHTML = `Today's date is ${today}`;
     speak(`Today's date is ${today}`);
+    return;
   }
 
   if (command.includes("open google")) {
     window.open("https://www.google.com", "_blank");
     speak("Opening Google");
+    return;
   }
+
+  // 👇 If command doesn’t match built-in ones → ask DeepSeek
+  responseContainer.innerHTML = `Thinking...`;
+  try {
+    const answer = await askAssistant(command);
+    responseContainer.innerHTML = answer;
+    speak(answer);
+  } catch (err) {
+    console.error("Error talking to AI:", err);
+    responseContainer.innerHTML = "Sorry, I couldn't get a response.";
+  }
+}
+
+
+
+// Clean text for speech (remove markdown, emojis, special chars)
+function cleanTextForSpeech(text) {
+  return text
+    // Remove markdown bold/italic
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    // Remove markdown headers
+    .replace(/#+\s*/g, '')
+    // Remove markdown lists
+    .replace(/^\s*[-*+]\s*/gm, '')
+    .replace(/^\s*\d+\.\s*/gm, '')
+    // Remove code blocks and inline code
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`([^`]+)`/g, '$1')
+    // Remove emojis and special characters
+    .replace(/[^\w\s.,!?;:()\-'"]/g, ' ')
+    // Clean up multiple spaces
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 // Speech synthesis helper
 function speak(text) {
-  const utter = new SpeechSynthesisUtterance(text);
+  const cleanText = cleanTextForSpeech(text);
+  const utter = new SpeechSynthesisUtterance(cleanText);
   speechSynthesis.speak(utter);
 }
 
