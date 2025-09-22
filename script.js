@@ -7,6 +7,8 @@ const msg = document.querySelector('.command-display');
 const commandForm = document.getElementById('text-command-form');
 const commandInput = document.getElementById('command-input');
 
+// WEATHER API
+const apiKey = 'a5c0fae4b7fc460080481110251109';
 
 // SpeechRecognition setup
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -150,18 +152,28 @@ async function processCommand(command) {
   responseContainer.innerHTML = `Command: ${command}`;
   const thisTurn = beginTurn();
 
-  // Voice interrupt command
   if (command.includes("stop") || command.includes("cancel") || command.includes("quiet") || command.includes("silence")) {
     stopSpeaking();
     responseContainer.innerHTML = `Stopped.`;
     return;
   }
 
-  //  If command doesn’t match built-in ones → ask DeepSeek
+  const weatherMatch = command.match(/what's the weather in (.+)|what is the weather in (.+)|weather in (.+)/i);
+  if (weatherMatch) {
+    const city = weatherMatch[1] || weatherMatch[2] || weatherMatch[3];
+    responseContainer.innerHTML = `Fetching weather for ${city}...`;
+    
+    const weatherReport = await getWeather(city.trim());
+    
+    saveQA(command, weatherReport);
+    showHistory();
+    speak(weatherReport);
+    return;
+  }
+
   responseContainer.innerHTML = `Thinking...`;
   try {
     const answer = await askAssistant(command);
-    // If a newer turn started or user said stop, ignore this reply
     if (thisTurn !== currentTurnId || !shouldSpeak) return;
     saveQA(command, answer);
     showHistory();
@@ -170,7 +182,7 @@ async function processCommand(command) {
     console.error("Error talking to AI:", err);
     responseContainer.innerHTML = "Sorry, I couldn't get a response.";
   }
-}
+} 
 
 
 
@@ -316,3 +328,29 @@ commandForm.addEventListener('submit', (e) => {
     commandInput.value = '';
   }
 });
+
+async function getWeather(city)
+{
+  try {
+    const url = `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${city}&aqi=no`;
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      return `Sorry, I couldn't find the weather for ${city}.`;
+    }
+
+    const data = await res.json();
+
+    const location = data.location.name;
+    const temp = data.current.temp_c;
+    const condition = data.current.condition.text;
+
+    const weatherReport = `The weather in ${location} is currently ${temp} degrees Celsius with ${condition}.`;
+    
+    return weatherReport;
+
+  } catch (error) {
+    console.error("Weather fetch error:", error);
+    return "Sorry, I'm having trouble connecting to the weather service.";
+  }
+}
