@@ -4,6 +4,8 @@ const stopBtn = document.querySelector('.btn-stop');
 const settingBtn = document.querySelector('.btn-secondary');
 const responseContainer = document.querySelector('.response-content');
 const msg = document.querySelector('.command-display');
+const commandForm = document.getElementById('text-command-form');
+const commandInput = document.getElementById('command-input');
 
 
 // SpeechRecognition setup
@@ -302,3 +304,15 @@ function showHistory() {
     `;
   });
 }
+
+
+
+commandForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const command = commandInput.value.trim();
+
+  if (command) {
+    processCommand(command);
+    commandInput.value = '';
+  }
+});
