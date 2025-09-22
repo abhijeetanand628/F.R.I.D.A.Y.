@@ -141,7 +141,7 @@ main {
     gap: 15px;
 }
 
-.btn-primary, .btn-secondary {
+.btn-start, .btn-stop, .btn-secondary {
     padding: 12px 25px;
     border: none;
     border-radius: 50px;
@@ -151,13 +151,24 @@ main {
     transition: all 0.3s ease;
 }
 
-.btn-primary {
+.btn-start {
     background: linear-gradient(to right, #e04e4e, #ff7f50);
     color: white;
     box-shadow: 0 4px 15px rgba(224, 78, 78, 0.3); 
 }
 
-.btn-primary:hover {
+.btn-start:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(224, 78, 78, 0.4);
+}
+
+.btn-stop {
+    background: linear-gradient(to right, #e04e4e, #ff7f50);
+    color: white;
+    box-shadow: 0 4px 15px rgba(224, 78, 78, 0.3); 
+}
+
+.btn-stop:hover {
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(224, 78, 78, 0.4);
 }

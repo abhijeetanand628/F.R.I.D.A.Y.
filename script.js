@@ -1,5 +1,6 @@
 const mic = document.querySelector('.mic-icon');
-const startBtn = document.querySelector('.btn-primary');
+const startBtn = document.querySelector('.btn-start');
+const stopBtn = document.querySelector('.btn-stop');
 const settingBtn = document.querySelector('.btn-secondary');
 const responseContainer = document.querySelector('.response-content');
 const msg = document.querySelector('.command-display');
@@ -55,6 +56,16 @@ startBtn.addEventListener('click', function(){
   msg.innerHTML = `Listening for "${wakeWord}"...`;
 })
 
+
+// Stop Listening button (alternative manual stop)
+stopBtn.addEventListener('click', function(){
+  if(isSpeaking)
+    return stopSpeaking();
+
+  recognition.stop();
+  console.log("Stopped listening manually.");
+  msg.innerHTML = `Stopped listening.`;
+})
 
 
 
