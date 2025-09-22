@@ -332,7 +332,7 @@ commandForm.addEventListener('submit', (e) => {
 async function getWeather(city)
 {
   try {
-    const url = `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${city}&aqi=no`;
+    const url = `https://api.weatherapi.com/v1/forecast.json?key=${apiKey}&q=${city}&days=1&aqi=no`;
     const res = await fetch(url);
 
     if (!res.ok) {
@@ -340,12 +340,17 @@ async function getWeather(city)
     }
 
     const data = await res.json();
+    // console.log(data);
 
     const location = data.location.name;
     const temp = data.current.temp_c;
     const condition = data.current.condition.text;
 
-    const weatherReport = `The weather in ${location} is currently ${temp} degrees Celsius with ${condition}.`;
+    const cityForecast = data.forecast.forecastday[0].day;
+    const Maxtemp = cityForecast.maxtemp_c;
+    const Mintemp = cityForecast.mintemp_c;
+
+    const weatherReport = `The weather in ${location} is currently ${temp} degrees Celsius with ${condition}. The high for today is ${Maxtemp} degrees Celsius and the low is ${Mintemp} degrees Celsius.`;
     
     return weatherReport;
 
