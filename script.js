@@ -7,6 +7,7 @@ const msg = document.querySelector('.command-display');
 const commandForm = document.getElementById('text-command-form');
 const commandInput = document.getElementById('command-input');
 
+
 // WEATHER API
 const apiKey = 'a5c0fae4b7fc460080481110251109';
 
@@ -218,6 +219,16 @@ function speak(text) {
   }
 
   const utter = new SpeechSynthesisUtterance(cleanText);
+
+
+// ✅ Apply chosen voice if saved
+  const savedVoice = localStorage.getItem('assistantVoice');
+  if (savedVoice) {
+    const match = speechSynthesis.getVoices().find(v => v.name === savedVoice);
+    if (match) utter.voice = match;
+  }
+
+
   currentUtterance = utter;
   isSpeaking = true;
 
@@ -251,19 +262,14 @@ function stopSpeaking() {
 // Additionally stop speech immediately when the page loses focus (safety)
 window.addEventListener('blur', stopSpeaking);
 
-// Settings button: prompt to save OpenRouter API key for dev
+// Instead of prompt
 settingBtn.addEventListener('click', () => {
-  const current = localStorage.getItem('OPENROUTER_API_KEY') || '';
-  const key = prompt('Enter your OpenRouter API key (stored locally):', current);
-  if (key !== null) {
-    if (key.trim()) {
-      localStorage.setItem('OPENROUTER_API_KEY', key.trim());
-      alert('Saved. Ask something to get real AI responses.');
-    } else {
-      localStorage.removeItem('OPENROUTER_API_KEY');
-      alert('Removed saved key. Using offline mode.');
-    }
-  }
+  document.getElementById('settingsModal').style.display = 'block';
+});
+
+// close button inside the modal
+document.querySelector('#settingsModal .close').addEventListener('click', () => {
+  document.getElementById('settingsModal').style.display = 'none';
 });
 
 // Handle end
@@ -359,3 +365,38 @@ async function getWeather(city)
     return "Sorry, I'm having trouble connecting to the weather service.";
   }
 }
+
+
+
+
+// ===== VOICE SELECTION =====
+const voiceSelect = document.getElementById('voice');
+let availableVoices = [];
+
+// Populate the dropdown with system voices
+function loadVoices() {
+  availableVoices = speechSynthesis.getVoices();
+  voiceSelect.innerHTML = ''; // clear old options
+
+  availableVoices.forEach(voice => {
+    const opt = document.createElement('option');
+    opt.value = voice.name;
+    opt.textContent = `${voice.name} (${voice.lang})${voice.default ? ' — Default' : ''}`;
+    voiceSelect.appendChild(opt);
+  });
+
+  // Restore saved voice if present
+  const savedVoice = localStorage.getItem('assistantVoice');
+  if (savedVoice && availableVoices.some(v => v.name === savedVoice)) {
+    voiceSelect.value = savedVoice;
+  }
+}
+
+// Some browsers load voices asynchronously
+speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices(); // call once in case voices are already ready
+
+// Save user choice
+voiceSelect.addEventListener('change', () => {
+  localStorage.setItem('assistantVoice', voiceSelect.value);
+});
