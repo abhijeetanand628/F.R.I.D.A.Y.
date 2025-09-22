@@ -18,10 +18,30 @@ recognition.lang = "en-US";
 // State variables
 let isActivated = false;   // Is assistant "awake"?
 let wakeWord = "friday";   // Default wake word
+let isSpeaking = false;     // Is TTS currently speaking?
+let currentUtterance = null; // Active SpeechSynthesisUtterance
+let currentTurnId = 0;      // Increment per command to invalidate old replies
+let shouldSpeak = true;     // Block speaking when user says stop
+let currentAbortController = null; // Abort in-flight fetch
+
+function beginTurn() {
+  currentTurnId += 1;
+  shouldSpeak = true;
+  if (currentAbortController) {
+    try { currentAbortController.abort(); } catch (_) {}
+  }
+  currentAbortController = new AbortController();
+  return currentTurnId;
+}
 
 
 // Mic click (manual trigger to start listening)
 mic.addEventListener('click', function(){
+    // If currently speaking, treat mic click as stop
+    if (isSpeaking) {
+      stopSpeaking();
+      return;
+    }
     recognition.start();
     console.log("Mic started, waiting for wake word...");
     msg.innerHTML = `Listening for "${wakeWord}"...`;
@@ -30,6 +50,10 @@ mic.addEventListener('click', function(){
 
 // Start Listening button (alternative manual start)
 startBtn.addEventListener('click', function(){
+  if (isSpeaking) {
+    stopSpeaking();
+    return;
+  }
   recognition.start();
   console.log("Started listening manually.");
   msg.innerHTML = `Listening for "${wakeWord}"...`;
@@ -39,14 +63,36 @@ startBtn.addEventListener('click', function(){
 
 
 async function askAssistant(prompt) {
-  const res = await fetch("/.netlify/functions/ask", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ prompt })
-  });
+  try {
+    const apiKey = localStorage.getItem('OPENROUTER_API_KEY') || '';
+    const res = await fetch("/.netlify/functions/ask", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        ...(apiKey ? { "X-OpenRouter-Api-Key": apiKey } : {})
+      },
+      body: JSON.stringify({ prompt, ...(apiKey ? { apiKey } : {}) }),
+      signal: currentAbortController ? currentAbortController.signal : undefined
+    });
 
-  const data = await res.json();
-  return data.answer || "Sorry, something went wrong.";
+    // Try to parse JSON; if server returns text/html on error, handle gracefully
+    const text = await res.text();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (_) {
+      throw new Error(text.slice(0, 200) || "Non-JSON response from server");
+    }
+
+    if (!res.ok) {
+      throw new Error(data.error || `Request failed with ${res.status}`);
+    }
+
+    return data.answer || "Sorry, I couldn't get a response.";
+  } catch (err) {
+    console.error("askAssistant error:", err);
+    throw err;
+  }
 }
 
 
@@ -56,6 +102,14 @@ async function askAssistant(prompt) {
 recognition.addEventListener("result", (e) => {
   let transcript = e.results[e.results.length - 1][0].transcript.toLowerCase().trim();
   console.log("Transcript:", transcript);
+
+  // Global voice interrupt while speaking
+  if (isSpeaking && (transcript.includes("stop") || transcript.includes("cancel") || transcript.includes("quiet") || transcript.includes("silence"))) {
+    stopSpeaking();
+    responseContainer.innerHTML = `Stopped.`;
+    isActivated = false;
+    return;
+  }
 
   if (!isActivated) {
     if (transcript.includes(wakeWord)) {
@@ -83,6 +137,14 @@ recognition.addEventListener("result", (e) => {
 async function processCommand(command) {
   console.log("Processing command:", command);
   responseContainer.innerHTML = `Command: ${command}`;
+  const thisTurn = beginTurn();
+
+  // Voice interrupt command
+  if (command.includes("stop") || command.includes("cancel") || command.includes("quiet") || command.includes("silence")) {
+    stopSpeaking();
+    responseContainer.innerHTML = `Stopped.`;
+    return;
+  }
 
   if (command.includes("time")) {
     const now = new Date().toLocaleTimeString();
@@ -108,6 +170,8 @@ async function processCommand(command) {
   responseContainer.innerHTML = `Thinking...`;
   try {
     const answer = await askAssistant(command);
+    // If a newer turn started or user said stop, ignore this reply
+    if (thisTurn !== currentTurnId || !shouldSpeak) return;
     responseContainer.innerHTML = answer;
     speak(answer);
   } catch (err) {
@@ -141,10 +205,62 @@ function cleanTextForSpeech(text) {
 
 // Speech synthesis helper
 function speak(text) {
+  if (!shouldSpeak) return;
   const cleanText = cleanTextForSpeech(text);
+
+  // Cancel any ongoing speech first
+  if (speechSynthesis.speaking) {
+    speechSynthesis.cancel();
+  }
+
   const utter = new SpeechSynthesisUtterance(cleanText);
+  currentUtterance = utter;
+  isSpeaking = true;
+
+  utter.onend = () => {
+    isSpeaking = false;
+    currentUtterance = null;
+  };
+  utter.onerror = () => {
+    isSpeaking = false;
+    currentUtterance = null;
+  };
+
   speechSynthesis.speak(utter);
 }
+
+function stopSpeaking() {
+  if (speechSynthesis.speaking || isSpeaking) {
+    try { speechSynthesis.cancel(); } catch (_) {}
+  }
+  isSpeaking = false;
+  currentUtterance = null;
+  shouldSpeak = false;
+  // Invalidate current turn and abort any pending fetch
+  currentTurnId += 1;
+  if (currentAbortController) {
+    try { currentAbortController.abort(); } catch (_) {}
+    currentAbortController = null;
+  }
+}
+
+// Additionally stop speech immediately when the page loses focus (safety)
+window.addEventListener('blur', stopSpeaking);
+
+// Settings button: prompt to save OpenRouter API key for dev
+settingBtn.addEventListener('click', () => {
+  const current = localStorage.getItem('OPENROUTER_API_KEY') || '';
+  const key = prompt('Enter your OpenRouter API key (stored locally):', current);
+  if (key !== null) {
+    if (key.trim()) {
+      localStorage.setItem('OPENROUTER_API_KEY', key.trim());
+      alert('Saved. Ask something to get real AI responses.');
+    } else {
+      localStorage.removeItem('OPENROUTER_API_KEY');
+      alert('Removed saved key. Using offline mode.');
+    }
+  }
+});
 
 // Handle end
 recognition.addEventListener("end", () => {
@@ -156,4 +272,3 @@ recognition.addEventListener("end", () => {
 recognition.addEventListener("error", (e) => {
   console.error("Speech recognition error:", e.error);
 });
-
