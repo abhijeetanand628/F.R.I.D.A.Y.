@@ -63,6 +63,8 @@ stopBtn.addEventListener('click', function(){
     return stopSpeaking();
 
   recognition.stop();
+  recognition.continuous = false;
+  isActivated = false;
   console.log("Stopped listening manually.");
   msg.innerHTML = `Stopped listening.`;
 })
@@ -251,8 +253,11 @@ settingBtn.addEventListener('click', () => {
 
 // Handle end
 recognition.addEventListener("end", () => {
-  console.log("Mic stopped, restarting...");
-  recognition.start();
+  console.log("Mic stopped.");
+  // Prevent automatic restart
+  recognition.continuous = false; // Ensure continuous mode is disabled
+  isActivated = false; // Reset activation state
+  msg.innerHTML = "Recognition has stopped. Click the mic icon or start button to resume.";
 });
 
 // Handle error
