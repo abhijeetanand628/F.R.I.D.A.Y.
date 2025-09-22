@@ -155,13 +155,14 @@ async function processCommand(command) {
     return;
   }
 
-  // 👇 If command doesn’t match built-in ones → ask DeepSeek
+  //  If command doesn’t match built-in ones → ask DeepSeek
   responseContainer.innerHTML = `Thinking...`;
   try {
     const answer = await askAssistant(command);
     // If a newer turn started or user said stop, ignore this reply
     if (thisTurn !== currentTurnId || !shouldSpeak) return;
-    responseContainer.innerHTML = answer;
+    saveQA(command, answer);
+    showHistory();
     speak(answer);
   } catch (err) {
     console.error("Error talking to AI:", err);
@@ -264,3 +265,40 @@ recognition.addEventListener("end", () => {
 recognition.addEventListener("error", (e) => {
   console.error("Speech recognition error:", e.error);
 });
+
+
+
+
+
+
+// Save Q&A in sessionStorage
+function saveQA(question, answer) {
+  let history = JSON.parse(sessionStorage.getItem("qaHistory")) || [];
+  history.push({
+    question,
+    answer,
+    time: new Date().toLocaleTimeString()
+  });
+  sessionStorage.setItem("qaHistory", JSON.stringify(history));
+}
+
+
+
+
+// Show Q&A history inside responseContainer
+function showHistory() {
+  const history = JSON.parse(sessionStorage.getItem("qaHistory")) || [];
+
+  responseContainer.innerHTML = ""; // clear old display
+
+  history.forEach(item => {
+    responseContainer.innerHTML += `
+      <div>
+        <p><strong>Q:</strong> ${item.question}</p>
+        <p><strong>A:</strong> ${item.answer}</p>
+        <small>${item.time}</small>
+        <hr>
+      </div>
+    `;
+  });
+}
