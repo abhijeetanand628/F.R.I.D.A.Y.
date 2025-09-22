@@ -8,9 +8,8 @@ const msg = document.querySelector('.command-display');
 // SpeechRecognition setup
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = new SpeechRecognition();
-
 // Optional settings
-recognition.continuous = true;   // Keep listening in background
+recognition.continuous = true; // Keep listening in background
 recognition.interimResults = false; // Only final results
 recognition.lang = "en-US";     
 
@@ -37,23 +36,20 @@ function beginTurn() {
 
 // Mic click (manual trigger to start listening)
 mic.addEventListener('click', function(){
-    // If currently speaking, treat mic click as stop
-    if (isSpeaking) {
-      stopSpeaking();
-      return;
-    }
-    recognition.start();
-    console.log("Mic started, waiting for wake word...");
-    msg.innerHTML = `Listening for "${wakeWord}"...`;
+  if (isSpeaking) 
+    return stopSpeaking();
+  recognition.start();
+  
+  console.log("Mic started, waiting for wake word...");
+  msg.innerHTML = `Listening for "${wakeWord}"...`;
 })
 
 
 // Start Listening button (alternative manual start)
 startBtn.addEventListener('click', function(){
-  if (isSpeaking) {
-    stopSpeaking();
-    return;
-  }
+  if (isSpeaking) 
+    return stopSpeaking();
+
   recognition.start();
   console.log("Started listening manually.");
   msg.innerHTML = `Listening for "${wakeWord}"...`;
@@ -132,7 +128,7 @@ recognition.addEventListener("result", (e) => {
   }
 });
 
-// Command handler function
+
 // Command handler function
 async function processCommand(command) {
   console.log("Processing command:", command);
@@ -143,26 +139,6 @@ async function processCommand(command) {
   if (command.includes("stop") || command.includes("cancel") || command.includes("quiet") || command.includes("silence")) {
     stopSpeaking();
     responseContainer.innerHTML = `Stopped.`;
-    return;
-  }
-
-  if (command.includes("time")) {
-    const now = new Date().toLocaleTimeString();
-    responseContainer.innerHTML = `Current time is ${now}`;
-    speak(`The time is ${now}`);
-    return;
-  }
-
-  if (command.includes("date")) {
-    const today = new Date().toLocaleDateString();
-    responseContainer.innerHTML = `Today's date is ${today}`;
-    speak(`Today's date is ${today}`);
-    return;
-  }
-
-  if (command.includes("open google")) {
-    window.open("https://www.google.com", "_blank");
-    speak("Opening Google");
     return;
   }
 
