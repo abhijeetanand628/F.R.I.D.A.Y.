@@ -6,18 +6,12 @@ const responseContainer = document.querySelector('.response-content');
 const msg = document.querySelector('.command-display');
 const commandForm = document.getElementById('text-command-form');
 const commandInput = document.getElementById('command-input');
-
-
-// WEATHER API
-const apiKey = 'a5c0fae4b7fc460080481110251109';
-
-// SpeechRecognition setup
-const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-const recognition = new SpeechRecognition();
-// Optional settings
-recognition.continuous = true; // Keep listening in background
-recognition.interimResults = false; // Only final results
-recognition.lang = "en-US";     
+const uploadBtn = document.querySelector('.upload-btn');
+const fileInput = document.querySelector('#file-upload-input');
+const previewContainer = document.querySelector('#file-preview-container');
+const imagePreview = document.querySelector('#image-preview');
+const fileNamePreview = document.querySelector('#file-preview-name');
+const removeFileBtn = document.querySelector('#remove-file-btn');
 
 
 // State variables
@@ -29,26 +23,16 @@ let currentTurnId = 0;      // Increment per command to invalidate old replies
 let shouldSpeak = true;     // Block speaking when user says stop
 let currentAbortController = null; // Abort in-flight fetch
 
-function beginTurn() {
-  currentTurnId += 1;
-  shouldSpeak = true;
-  if (currentAbortController) {
-    try { currentAbortController.abort(); } catch (_) {}
-  }
-  currentAbortController = new AbortController();
-  return currentTurnId;
-}
+
+// WEATHER API
+const apiKey = 'a5c0fae4b7fc460080481110251109';
 
 
-// Mic click (manual trigger to start listening)
-mic.addEventListener('click', function(){
-  if (isSpeaking) 
-    return stopSpeaking();
-  recognition.start();
-  
-  console.log("Mic started, waiting for wake word...");
-  msg.innerHTML = `Listening for "${wakeWord}"...`;
-})
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const recognition = new SpeechRecognition();
+recognition.continuous = true; // Keep listening in background
+recognition.interimResults = false; // Only final results
+recognition.lang = "en-US";     
 
 
 // Start Listening button (alternative manual start)
@@ -74,6 +58,134 @@ stopBtn.addEventListener('click', function(){
   msg.innerHTML = `Stopped listening.`;
 })
 
+
+
+// Clean text for speech (remove markdown, emojis, special chars)
+function cleanTextForSpeech(text) {
+  return text
+    // Remove markdown bold/italic
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    // Remove markdown headers
+    .replace(/#+\s*/g, '')
+    // Remove markdown lists
+    .replace(/^\s*[-*+]\s*/gm, '')
+    .replace(/^\s*\d+\.\s*/gm, '')
+    // Remove code blocks and inline code
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/`([^`]+)`/g, '$1')
+    // Remove emojis and special characters
+    .replace(/[^\w\s.,!?;:()\-'"]/g, ' ')
+    // Clean up multiple spaces
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+
+
+// Speech synthesis helper
+function speak(text) {
+  if (!shouldSpeak) return;
+  const cleanText = cleanTextForSpeech(text);
+
+  // Cancel any ongoing speech first
+  if (speechSynthesis.speaking) {
+    speechSynthesis.cancel();
+  }
+
+  const utter = new SpeechSynthesisUtterance(cleanText);
+
+
+// Apply chosen voice if saved
+  const savedVoice = localStorage.getItem('assistantVoice');
+  if (savedVoice) {
+    const match = speechSynthesis.getVoices().find(v => v.name === savedVoice);
+    if (match) utter.voice = match;
+  }
+
+
+  currentUtterance = utter;
+  isSpeaking = true;
+
+  utter.onend = () => {
+    isSpeaking = false;
+    currentUtterance = null;
+  };
+  utter.onerror = () => {
+    isSpeaking = false;
+    currentUtterance = null;
+  };
+
+  speechSynthesis.speak(utter);
+}
+
+function stopSpeaking() {
+  if (speechSynthesis.speaking || isSpeaking) {
+    try { speechSynthesis.cancel(); } catch (_) {}
+  }
+  isSpeaking = false;
+  currentUtterance = null;
+  shouldSpeak = false;
+  // Invalidate current turn and abort any pending fetch
+  currentTurnId += 1;
+  if (currentAbortController) {
+    try { currentAbortController.abort(); } catch (_) {}
+    currentAbortController = null;
+  }
+}
+
+
+// Save Q&A in sessionStorage
+function saveQA(question, answer) {
+  let history = JSON.parse(sessionStorage.getItem("qaHistory")) || [];
+  history.push({
+    question,
+    answer,
+    time: new Date().toLocaleTimeString()
+  });
+  sessionStorage.setItem("qaHistory", JSON.stringify(history));
+}
+
+
+// Show Q&A history inside responseContainer
+function showHistory() {
+  const history = JSON.parse(sessionStorage.getItem("qaHistory")) || [];
+
+  responseContainer.innerHTML = ""; // clear old display
+
+  history.forEach(item => {
+    responseContainer.innerHTML += `
+      <div>
+        <p><strong>Q:</strong> ${item.question}</p>
+        <p><strong>A:</strong> ${item.answer}</p>
+        <small>${item.time}</small>
+        <hr>
+      </div>
+    `;
+  });
+}
+
+
+function beginTurn() {
+  currentTurnId += 1;
+  shouldSpeak = true;
+  if (currentAbortController) {
+    try { currentAbortController.abort(); } catch (_) {}
+  }
+  currentAbortController = new AbortController();
+  return currentTurnId;
+}
+
+
+// Mic click (manual trigger to start listening)
+mic.addEventListener('click', function(){
+  if (isSpeaking) 
+    return stopSpeaking();
+  recognition.start();
+  
+  console.log("Mic started, waiting for wake word...");
+  msg.innerHTML = `Listening for "${wakeWord}"...`;
+})
 
 
 async function askAssistant(prompt) {
@@ -108,8 +220,6 @@ async function askAssistant(prompt) {
     throw err;
   }
 }
-
-
 
 
 // Handle result    
@@ -186,79 +296,6 @@ async function processCommand(command) {
 } 
 
 
-
-// Clean text for speech (remove markdown, emojis, special chars)
-function cleanTextForSpeech(text) {
-  return text
-    // Remove markdown bold/italic
-    .replace(/\*\*(.*?)\*\*/g, '$1')
-    .replace(/\*(.*?)\*/g, '$1')
-    // Remove markdown headers
-    .replace(/#+\s*/g, '')
-    // Remove markdown lists
-    .replace(/^\s*[-*+]\s*/gm, '')
-    .replace(/^\s*\d+\.\s*/gm, '')
-    // Remove code blocks and inline code
-    .replace(/```[\s\S]*?```/g, '')
-    .replace(/`([^`]+)`/g, '$1')
-    // Remove emojis and special characters
-    .replace(/[^\w\s.,!?;:()\-'"]/g, ' ')
-    // Clean up multiple spaces
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-// Speech synthesis helper
-function speak(text) {
-  if (!shouldSpeak) return;
-  const cleanText = cleanTextForSpeech(text);
-
-  // Cancel any ongoing speech first
-  if (speechSynthesis.speaking) {
-    speechSynthesis.cancel();
-  }
-
-  const utter = new SpeechSynthesisUtterance(cleanText);
-
-
-// ✅ Apply chosen voice if saved
-  const savedVoice = localStorage.getItem('assistantVoice');
-  if (savedVoice) {
-    const match = speechSynthesis.getVoices().find(v => v.name === savedVoice);
-    if (match) utter.voice = match;
-  }
-
-
-  currentUtterance = utter;
-  isSpeaking = true;
-
-  utter.onend = () => {
-    isSpeaking = false;
-    currentUtterance = null;
-  };
-  utter.onerror = () => {
-    isSpeaking = false;
-    currentUtterance = null;
-  };
-
-  speechSynthesis.speak(utter);
-}
-
-function stopSpeaking() {
-  if (speechSynthesis.speaking || isSpeaking) {
-    try { speechSynthesis.cancel(); } catch (_) {}
-  }
-  isSpeaking = false;
-  currentUtterance = null;
-  shouldSpeak = false;
-  // Invalidate current turn and abort any pending fetch
-  currentTurnId += 1;
-  if (currentAbortController) {
-    try { currentAbortController.abort(); } catch (_) {}
-    currentAbortController = null;
-  }
-}
-
 // Additionally stop speech immediately when the page loses focus (safety)
 window.addEventListener('blur', stopSpeaking);
 
@@ -285,43 +322,6 @@ recognition.addEventListener("end", () => {
 recognition.addEventListener("error", (e) => {
   console.error("Speech recognition error:", e.error);
 });
-
-
-
-
-
-
-// Save Q&A in sessionStorage
-function saveQA(question, answer) {
-  let history = JSON.parse(sessionStorage.getItem("qaHistory")) || [];
-  history.push({
-    question,
-    answer,
-    time: new Date().toLocaleTimeString()
-  });
-  sessionStorage.setItem("qaHistory", JSON.stringify(history));
-}
-
-
-
-
-// Show Q&A history inside responseContainer
-function showHistory() {
-  const history = JSON.parse(sessionStorage.getItem("qaHistory")) || [];
-
-  responseContainer.innerHTML = ""; // clear old display
-
-  history.forEach(item => {
-    responseContainer.innerHTML += `
-      <div>
-        <p><strong>Q:</strong> ${item.question}</p>
-        <p><strong>A:</strong> ${item.answer}</p>
-        <small>${item.time}</small>
-        <hr>
-      </div>
-    `;
-  });
-}
 
 
 
@@ -399,4 +399,33 @@ loadVoices(); // call once in case voices are already ready
 // Save user choice
 voiceSelect.addEventListener('change', () => {
   localStorage.setItem('assistantVoice', voiceSelect.value);
+});
+
+
+// UPLOAD BTN LOGIC
+uploadBtn.addEventListener('click', function(){
+  console.log("clicked");
+  fileInput.click();
+})
+
+fileInput.addEventListener('change', function() {
+  const file = fileInput.files[0];
+
+  if (file && file.type.startsWith('image/')) {
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+      imagePreview.src = e.target.result;
+      fileNamePreview.textContent = file.name;
+      previewContainer.style.display = 'flex';
+    };
+
+    reader.readAsDataURL(file);
+  }
+});
+
+removeFileBtn.addEventListener('click', function() {
+  previewContainer.style.display = 'none';
+  imagePreview.src = '#';
+  fileInput.value = '';
 });

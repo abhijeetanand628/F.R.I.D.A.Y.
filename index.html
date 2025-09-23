@@ -30,9 +30,22 @@
                 </div>
 
                 <form id="text-command-form">
-                    <input type="text" id="command-input" placeholder="Or type your command here..." autocomplete="off">
+                    <div class="input-wrapper">
+                        <button type="button" id="upload-btn" class="upload-btn" aria-label="Upload file">
+                            +
+                        </button>
+                        <input type="text" id="command-input" placeholder="Type command or upload file..." autocomplete="off">
+                    </div>
                     <button type="submit">Send</button>
                 </form>
+
+                <div id="file-preview-container" style="display: none;">
+                    <p id="file-preview-name"></p>
+                    <img id="image-preview" src="#" alt="Image preview">
+                    <button id="remove-file-btn">&times;</button>
+                </div>
+
+                <input type="file" id="file-upload-input" accept="image/*,video/*" hidden>
                 
                 <div class="controls">
                     <button id="toggleListening" class="btn-start">
