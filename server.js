@@ -18,7 +18,7 @@ app.post('/.netlify/functions/ask', async (req, res) => {
     
     // Check if API key is set
     const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey || apiKey === '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') {
+    if (!apiKey || apiKey === 'your-api-key-here') {
       return res.json({
         answer: `I heard you say: "${prompt}". 
 
