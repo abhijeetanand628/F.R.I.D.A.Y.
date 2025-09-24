@@ -247,6 +247,10 @@ footer {
     justify-content: center;
 }
 
+.modal.show {
+    display: flex;
+}
+
 .modal-content {
     background-color: #4a4a4a; /* Darker modal background */
     border-radius: 15px;

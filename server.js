@@ -1,7 +1,7 @@
-const express = require('express');
-const path = require('path');
-const cors = require('cors');
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const app = express();
 const PORT = 3000;
@@ -18,7 +18,7 @@ app.post('/.netlify/functions/ask', async (req, res) => {
     
     // Check if API key is set
     const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey || apiKey === 'your_actual_api_key_here') {
+    if (!apiKey || apiKey === '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') {
       return res.json({
         answer: `I heard you say: "${prompt}". 
 
